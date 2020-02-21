@@ -195,24 +195,28 @@ class UKF:
         # this code is checked
         ## this function compute the quaternion multiplication
         # output is (1,4)
-        u0 = q1[0]
-        v0 = q2[0]
-        u = np.array(q1[1:]).reshape(-1, 1)
-        v = np.array(q2[1:]).reshape(-1, 1)
-        #         print(u)
-        #         print(v)
-        # q1, q2 is of shape (4,)
-
-        scale_part = u0 * v0 - u.T @ v
-        vect_part = u0 * v.T + v0 * u.T + np.cross(u.T, v.T)
-        #         print(scale_part)
-        #         print(vect_part)
-        q = np.hstack((scale_part, vect_part))
-        #         print(q)
-        q = q.reshape(4, )
-        assert q.shape == (4,)
-        #         print(q)
-        return q
+        return np.array([-q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3] + q1[0] * q2[0],
+                         q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2] + q1[0] * q2[1],
+                         -q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1] + q1[0] * q2[2],
+                         q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0] + q1[0] * q2[3]])
+        # u0 = q1[0]
+        # v0 = q2[0]
+        # u = np.array(q1[1:]).reshape(-1, 1)
+        # v = np.array(q2[1:]).reshape(-1, 1)
+        # #         print(u)
+        # #         print(v)
+        # # q1, q2 is of shape (4,)
+        #
+        # scale_part = u0 * v0 - u.T @ v
+        # vect_part = u0 * v.T + v0 * u.T + np.cross(u.T, v.T)
+        # #         print(scale_part)
+        # #         print(vect_part)
+        # q = np.hstack((scale_part, vect_part))
+        # #         print(q)
+        # q = q.reshape(4, )
+        # assert q.shape == (4,)
+        # #         print(q)
+        # return q
 
     def processModel(self, sigma_points, delta_t):
 
@@ -586,6 +590,8 @@ def estimate_rot(data_num=1):
     pred_y = []
     from scipy.spatial.transform import Rotation as R
     for i in range(1, normal_IMU_ts.shape[0]):
+        true_mear = normal_IMU_vals[i, :]
+        x[4:] = true_mear[3:]
         if i % 1000 == 999:
             print("UKF cycles", i+1)
         # compute the delta_t for process model use
@@ -607,13 +613,13 @@ def estimate_rot(data_num=1):
         
         
         mear_pts = ukf.measureModel(proj_sigma_pts, noise_angu_vel, noise_acc)
-        true_mear = normal_IMU_vals[i,:]
-        print("true mear",true_mear)
+
+        # print("true mear",true_mear)
 
         assert true_mear.shape == (6,)
         
         z_bar, P_zz, Z = ukf.measureMeanCov(mear_pts)
-        print("pred mear", z_bar)
+        # print("pred mear", z_bar)
 #         P_xz = Z.T @ W_prime / n_pts
         P_xz = (W_prime.T @ Z) / n_pts
         P_vv = P_zz + R_noise
@@ -671,50 +677,7 @@ def estimate_rot(data_num=1):
     plt.title("Yaw compara")
     plt.legend()
     plt.show()
-        
-#         if i == 1:
-#             break
-        
-        
-        # compute the delta_t for process model use
-#         delta_t = normal_IMU_ts[i] - normal_IMU_ts[i-1]
-#         print("UKF iteration", i)
-        # get the sigma points
-#         sigma_pts = ukf.SigmaPts(P, Q, x)
-        # project the sigma points
-#         proj_sigma_pts = ukf.processModel(sigma_pts,delta_t)
-        # get the 
-        
-    
-    
-    
-    
-#     # init the state, P
-# # x = np.array([1,0,0,0,0.0056,0.012,0.0051])
-# x = np.array([1,0,0,0,0.01,0.01,0.01])
-# # use a random matrix A to generate a PD matrix
-# seed = np.random.seed(1)
-# # test Sigma_pts
-# A = np.random.rand(6,6)
-# P = np.eye(6)
-# # set a noise PD matrix Q
-# Q = np.eye(6)
-# R = 0.01*np.eye(6)
-# noise_angu_vel = np.random.normal(0,1,3)
-# noise_acc = np.random.normal(0,1,3)
-# sigma_pts = test.SigmaPts(P, Q, x)
-# n_pts, d_7 = sigma_pts.shape
-# print("sigma_pts:\n",sigma_pts)
-# # print("sigma_pts shape:", sigma_pts.shape)
-# proj_sigma_pts = test.processModel(sigma_pts,0.1)
-# print("sigma_pts_after_proj(should no change):\n",sigma_pts)
-# x_hat_bar, P_k_bar, W_prime = test.SigmaPtsMeanCov(proj_sigma_pts,x)
-# mear_pts = measureModel(proj_sigma_pts, noise_angu_vel, noise_acc)
-# z_bar, P_zz, Z = test.measureMeanCov(proj_sigma_pts)
-# P_xz = Z.T @ W_prime / n_pts
-# P_vv = P_zz + R
-# K = P_xz @ LA.pinv(P_vv)
-# x = x_hat_bar + K@()
+
     
     
     pass
@@ -722,62 +685,6 @@ def estimate_rot(data_num=1):
 #     return roll,pitch,yaw
 estimate_rot(1)
 
-
-# # Process model
-
-# In[254]:
-
-# number = 1
-# imuRaw = sio.loadmat("./imu/imuRaw" + str(number) + ".mat")
-# viconRot = sio.loadmat("./vicon/viconRot" + str(number) + ".mat")   
-    
-# imu_ts = imuRaw["ts"]
-# imu_vals = imuRaw["vals"]
-    
-# test = UKF()
-# # print("quatMulti checked")
-# print("test for multiplication:",test.quatMultip([1,0,0,0],[0,0,0,9.8]))
-# half = test.quatMultip([1,0,0,0],[0,0,0,9.8])
-# whole = test.quatMultip(half,[1,0,0,0])
-# print(whole)
-# r = R.from_quat(whole)
-# print(r.as_rotvec())
-# test_quat = test.rotVectToQuat([np.pi/3,np.pi/3,0])
-# r = R.from_rotvec([np.pi/3,np.pi/3,0])
-# print("scipy",r.as_quat())
-# print("scipy",r.as_quat()[[3,0,1,2]])
-# print("scipy",r.as_rotvec().shape)
-# print("test quat:", test_quat)
-# inv_test_quat = test.invQuat(test_quat)
-# print("inv test quat:", inv_test_quat)
-# # print(np.cross([2,3,4],[3,2,4]))
-
-# # init the state, P
-# # x = np.array([1,0,0,0,0.0056,0.012,0.0051])
-# x = np.array([1,0,0,0,0.01,0.01,0.01])
-# # use a random matrix A to generate a PD matrix
-# seed = np.random.seed(1)
-# # test Sigma_pts
-# A = np.random.rand(6,6)
-# P = np.eye(6)
-# # set a noise PD matrix Q
-# Q = np.eye(6)
-# R_noise = 0.01*np.eye(6)
-# noise_angu_vel = np.random.normal(0,1,3)
-# noise_acc = np.random.normal(0,1,3)
-# sigma_pts = test.SigmaPts(P, Q, x)
-# n_pts, d_7 = sigma_pts.shape
-# print("sigma_pts:\n",sigma_pts)
-# # print("sigma_pts shape:", sigma_pts.shape)
-# proj_sigma_pts = test.processModel(sigma_pts,0.1)
-# print("sigma_pts_after_proj(should no change):\n",sigma_pts)
-# x_hat_bar, P_k_bar, W_prime = test.SigmaPtsMeanCov(proj_sigma_pts,x)
-# mear_pts = measureModel(proj_sigma_pts, noise_angu_vel, noise_acc)
-# z_bar, P_zz, Z = test.measureMeanCov(proj_sigma_pts)
-# P_xz = Z.T @ W_prime / n_pts
-# P_vv = P_zz + R_noise
-# K = P_xz @ LA.pinv(P_vv)
-# x = x_hat_bar + K@()
 
 
 
